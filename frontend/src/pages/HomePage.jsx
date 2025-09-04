@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import React from 'react';
 import Navbar from '../components/Navbar';
-import RateLimitedUI from '../components/RateLimitedUi';
+import RateLimitedUI from '../components/RateLimitedUI';
 import axios from "axios";
 import api from '../lib/axios';
 import toast from 'react-hot-toast'
