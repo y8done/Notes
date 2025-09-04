@@ -5,11 +5,11 @@ import './index.css';
 import { BrowserRouter } from "react-router";
 import {Toaster} from 'react-hot-toast'
 createRoot(document.getElementById("root")).render(
-  // <StrictMode>
+  <StrictMode>
     <BrowserRouter>
       <App />
       <Toaster />
     </BrowserRouter>
     
-  // </StrictMode>
+  </StrictMode>
 );
