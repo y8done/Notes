@@ -1,17 +1,20 @@
-import React, { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router';
-import api from '../lib/axios';
-import toast from 'react-hot-toast';
-import { useParams } from 'react-router';
-import { ArrowLeftIcon,Trash2Icon,LoaderIcon } from 'lucide-react';
-import { Link } from 'react-router';
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router";
+import api from "../lib/axios";
+import toast from "react-hot-toast";
+import { useParams } from "react-router";
+import { ArrowLeftIcon, Trash2Icon, LoaderIcon } from "lucide-react";
+import { Link } from "react-router";
 const NoteDetail = () => {
-  const [note,setNote] = useState(null);
-  const [loading,setLoading] = useState(true);
-  const [saving,setSaving] = useState(false);
+  const [note, setNote] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
-  const {id} = useParams()
-  useEffect(()=>{
+  const { id } = useParams();
+  const [summary, setSummary] = useState("");
+  const [summarizing, setSummarizing] = useState(false);
+
+  useEffect(() => {
     const fetchNote = async () => {
       try {
         const res = await api.get(`/notes/${id}`);
@@ -24,37 +27,36 @@ const NoteDetail = () => {
       }
     };
     fetchNote();
-  },[id])
-  const handleSave = async()=>{
-    if(!note.title.trim() || !note.content.trim())
-    {
-      toast.error("All fields are required")
+  }, [id]);
+  const handleSave = async () => {
+    if (!note.title.trim() || !note.content.trim()) {
+      toast.error("All fields are required");
       return;
     }
     setSaving(true);
 
     try {
-      await api.put(`/notes/${id}`,note)
+      await api.put(`/notes/${id}`, note);
       toast.success("Note updated successfully");
       navigate("/");
     } catch (error) {
       console.log("Error saving the note:", error);
       toast.error("Failed to update note");
-    }finally {
+    } finally {
       setSaving(false);
     }
-  }
-  const handleDelete = async()=>{
-    if(!window.confirm("Are you sure you want to delete this note ?")) return;
+  };
+  const handleDelete = async () => {
+    if (!window.confirm("Are you sure you want to delete this note ?")) return;
     try {
-       await api.delete(`/notes/${id}`)
-      toast.success("Note Deleted Successfully")
-      navigate("/")
+      await api.delete(`/notes/${id}`);
+      toast.success("Note Deleted Successfully");
+      navigate("/");
     } catch (error) {
-      console.log("Error in handleDelete:",error)
-      toast.error("Failed to delete the note ! try again later !!!")
+      console.log("Error in handleDelete:", error);
+      toast.error("Failed to delete the note ! try again later !!!");
     }
-  }
+  };
   if (loading) {
     return (
       <div className="min-h-screen bg-base-200 flex items-center justify-center">
@@ -62,6 +64,25 @@ const NoteDetail = () => {
       </div>
     );
   }
+  const handleSummarize = async () => {
+    if(!note || !note.content.trim())
+    {
+      toast.error("Note content is empty ! Cannot summarize")
+    }
+    setSummarizing(true);
+    try {
+      const res = await api.post("/ai/summarize", { text: note.content });
+      setSummary(res.data.summary);
+      toast.success("Summary generated successfully");
+    } catch (error) {
+      console.log("Error in handleSummarize:", error);
+      toast.error("Failed to generate summary! Please try again later");
+    }
+    finally {
+      setSummarizing(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-base-200">
       <div className="container mx-auto px-4 py-8">
@@ -71,7 +92,10 @@ const NoteDetail = () => {
               <ArrowLeftIcon className="h-5 w-5" />
               Back to Notes
             </Link>
-            <button onClick={handleDelete} className="btn btn-error btn-outline">
+            <button
+              onClick={handleDelete}
+              className="btn btn-error btn-outline"
+            >
               <Trash2Icon className="h-5 w-5" />
               Delete Note
             </button>
@@ -100,12 +124,36 @@ const NoteDetail = () => {
                   placeholder="Write your note here..."
                   className="textarea textarea-bordered h-32"
                   value={note.content}
-                  onChange={(e) => setNote({ ...note, content: e.target.value })}
+                  onChange={(e) =>
+                    setNote({ ...note, content: e.target.value })
+                  }
                 />
+                {summary && (
+                  <div className="mt-6 p-4 bg-base-200 rounded-lg border border-gray-300 shadow-sm">
+                    <h3 className="font-semibold mb-2 text-lg text-primary">
+                      Summary
+                    </h3>
+                    <p className="whitespace-pre-line text-base text-gray-700">
+                      {summary}
+                    </p>
+                  </div>
+                )}
               </div>
 
-              <div className="card-actions justify-end">
-                <button className="btn btn-primary" disabled={saving} onClick={handleSave}>
+              <div className="card-actions justify-between">
+                <button
+                  className="btn btn-secondary"
+                  onClick={handleSummarize}
+                  disabled={summarizing}
+                >
+                  {summarizing ? "Summarizing..." : "Summarize Note"}
+                </button>
+
+                <button
+                  className="btn btn-primary"
+                  disabled={saving}
+                  onClick={handleSave}
+                >
                   {saving ? "Saving..." : "Save Changes"}
                 </button>
               </div>
@@ -115,6 +163,6 @@ const NoteDetail = () => {
       </div>
     </div>
   );
-}
+};
 
-export default NoteDetail
+export default NoteDetail;
