@@ -38,25 +38,39 @@ async function registerUser(req,res) {
 }
 async function loginUser(req, res) {
    try {
-        const { username, password } = req.body;
- 
-        // 1. Use findOne() to get a single user object, not an array.
+        console.log('Login attempt', { body: req.body, ip: req.ip });
+
+        const { username, password } = req.body || {};
+
+        if (!username || !password) {
+            return res.status(400).json({ message: "Username and password required" });
+        }
+
         const user = await User.findOne({ username: username });
 
-        // 2. Combine user and password check into one block.
-        // Use bcrypt.compare directly for clarity.
-        if (!user || !(await bcrypt.compare(password, user.password))) {
-            // 3. Use 401 Unauthorized for authentication failures.
+        if (!user) {
             return res.status(401).json({ message: "Invalid credentials" });
+        }
+
+        const passwordMatches = await bcrypt.compare(password, user.password);
+        if (!passwordMatches) {
+            return res.status(401).json({ message: "Invalid credentials" });
+        }
+
+        const secret = process.env.JWT_SECRET;
+        if (!secret) {
+            console.error('JWT_SECRET is not set in environment');
+            return res.status(500).json({ message: "Server misconfigured (missing JWT secret)" });
         }
 
         const token = jwt.sign(
             { id: user._id },
-            process.env.JWT_SECRET,
+            secret,
             { expiresIn: '1d' }
         );
 
-        return res.status(200).json({ message: "Login successful", token: token });
+        // Return token and minimal user info
+        return res.status(200).json({ message: "Login successful", token, user: { id: user._id, username: user.username,name:user.name } });
 
     } catch (error) {
         console.error("Error in login user:", error);

@@ -35,7 +35,8 @@ if (process.env.NODE_ENV === "production") {
   app.get("*", (req, res) => {
     res.sendFile(path.join(distPath, "index.html"));
   });
-}
+} 77
+
 
 // Start server
 connectDB().then(() => {

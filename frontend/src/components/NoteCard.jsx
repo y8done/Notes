@@ -1,25 +1,31 @@
-import React from 'react'
-import { Link } from 'react-router'
-import { formatDate } from '../lib/utils'
-import { PenSquareIcon, Trash2Icon } from 'lucide-react'
-
-import api from '../lib/axios'
-import toast from 'react-hot-toast'
-
-
-const NoteCard = ({note,setNotes}) => {
-  const handleDelete = async(e,id)=>{
+import React from "react";
+import { Link } from "react-router";
+import { formatDate } from "../lib/utils";
+import { PenSquareIcon, Trash2Icon } from "lucide-react";
+import api from "../lib/axios";
+import toast from "react-hot-toast";
+import { useAuth } from "../context/AuthContext";
+import { useNotes } from "../context/NoteContext";
+import { useState } from "react";
+const NoteCard = ({ note }) => {
+  const { refreshNotes } = useNotes();
+  const [isDeleting, setIsDeleting] = useState(false);
+  const handleDelete = async (e, id) => {
     e.preventDefault();
-    if(!window.confirm("Are you sure you want to delete this note ?")) return;
+    e.stopPropagation();
+    if (!window.confirm("Are you sure you want to delete this note ?")) return;
+    setIsDeleting(true);
     try {
-       await api.delete(`/notes/${id}`)
-       setNotes((prev)=> prev.filter((note)=>note._id !== id))
-      toast.success("Note Deleted Successfully")
+      await api.delete(`/notes/${id}`);
+      
+      toast.success("Note Deleted Successfully");
+
+      refreshNotes();
     } catch (error) {
-      console.log("Error in handleDelete:",error)
-      toast.error("Failed to delete the note ! try again later !!!")
+      console.log("Error in handleDelete:", error);
+      toast.error("Failed to delete the note ! try again later !!!");
     }
-  }
+  };
   return (
     <Link
       to={`/note/${note._id}`}
@@ -33,19 +39,21 @@ const NoteCard = ({note,setNotes}) => {
           <span className="text-sm text-base-content/60">
             {formatDate(new Date(note.createdAt))}
           </span>
-          <div className="flex items-center gap-1">
-            <PenSquareIcon className="size-4" />
-            <button
-              className="btn btn-ghost btn-xs text-error"
-              onClick={(e) => handleDelete(e, note._id)}
-            >
-              <Trash2Icon className="size-4" />
-            </button>
-          </div>
+          { !note.isGlobal && (
+            <div className="flex items-center gap-1">
+              <PenSquareIcon className="size-4" />
+              <button
+                className="btn btn-ghost btn-xs text-error"
+                onClick={(e) => handleDelete(e, note._id)}
+              >
+                <Trash2Icon className="size-4" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </Link>
-  )
-}
+  );
+};
 
-export default NoteCard
+export default NoteCard;
