@@ -1,32 +1,56 @@
 const Note = require('../models/Note');
+const mongoose = require('mongoose');
 
-async function getAllNotes(req, res) {
+async function getGlobalNotes(req, res){
+    try{
+        const notes = await Note.find({isGlobal:true}).sort({createdAt:-1});
+        res.status(200).json(notes);
+    }catch(error){
+        console.error("Error Fetching the notes !",error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+}
+
+async function addGlobalNote(req, res){
+    try{
+        const { title, content} = req.body;
+
+        const newNote = new Note({
+            title,
+            content,
+            isGlobal:true,
+            user:null
+        });
+
+        await newNote.save();
+        res.status(201).json({ message: 'Global note shared!', note: newNote });
+    }catch(error){
+        console.error("Error in creating a new note !",error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+}
+async function getUserNotes(req, res) {
     try {
-        const notes = await Note.find().sort({createdAt:-1});
+        const notes = await Note.find({user: new mongoose.Types.ObjectId(req.user.id || req.user._id),isGlobal:false}).sort({createdAt:-1});
         res.status(200).json(notes);
     } catch (error) {
         console.error("Error fetching notes:", error);
         res.status(500).json({ message: "Internal server error" });
+        
     }
 }
 
-async function getNoteById(req, res) {
-    try {
-        const note = await Note.findById(req.params.id);
-        if (!note) {
-            return res.status(404).json({ message: "Note not found" });
-        }
-        res.status(200).json(note);
-    } catch (error) {
-        console.error("Error fetching note:", error);
-        res.status(500).json({ message: "Internal server error" });
-    }
-}
 
-async function addnote(req, res) {
+
+async function addUserNote(req, res) {
     try {
         const { title, content } = req.body;
-        const newNote = new Note({ title, content });
+        const newNote = new Note({ 
+            title, 
+            content,
+            user: req.user.id, // Comes from authMiddleware
+            isGlobal: false
+         });
 
         await newNote.save();
         res.status(201).json({ message: 'Note created successfully', note: newNote });
@@ -36,30 +60,38 @@ async function addnote(req, res) {
     }
 }
 
-async function updatenote(req, res) {
+async function updateUserNote(req, res) {
     try {
         const { title, content } = req.body;
-        const updatedNote = await Note.findByIdAndUpdate(
-            req.params.id,
-            { title, content },
-            { new: true }
-        );
-        if (!updatedNote) {
-            return res.status(404).json({ message: "Note not found" });
+        const note = await Note.findById(req.params.id);
+        if (!note) return res.status(404).json({ message: "Note not found" });
+
+        // 2. SECURITY CHECK: Does this note belong to the user?
+        if (note.user.toString() !== req.user.id) {
+            return res.status(401).json({ message: "Not authorized to edit this note" });
         }
-        res.status(200).json(updatedNote);
+
+        note.title = title || note.title;
+        note.content = content || note.content;
+        await note.save();
+        res.status(200).json(note);
     } catch (error) {
         console.error("Error in updating a note:", error);
         res.status(500).json({ message: "Internal server error" });
     }
 }
 
-async function deletenote(req, res) {
+async function deleteUserNote(req, res) {
     try {
-        const deletedNote = await Note.findByIdAndDelete(req.params.id);
-        if (!deletedNote) {
-            return res.status(404).json({ message: "Note not found" });
+        const note = await Note.findById(req.params.id);
+        if (!note) return res.status(404).json({ message: "Note not found" });
+
+        // SECURITY CHECK: Only allow delete if the user owns it
+        if (note.user && note.user.toString() !== req.user.id) {
+            return res.status(401).json({ message: "Not authorized to delete this note" });
         }
+
+        await note.deleteOne();
         res.status(200).json({ message: "Note deleted successfully" });
     } catch (error) {
         console.error("Error in deleting a note:", error);
@@ -68,9 +100,10 @@ async function deletenote(req, res) {
 }
 
 module.exports = {
-    getAllNotes,
-    getNoteById,
-    addnote,
-    updatenote,
-    deletenote
+    getGlobalNotes,
+    addGlobalNote,
+    getUserNotes,
+    addUserNote,
+    updateUserNote,
+    deleteUserNote
 };
