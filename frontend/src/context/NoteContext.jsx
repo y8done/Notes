@@ -18,7 +18,7 @@ export const NoteProvider = ({ children }) => {
   useEffect(() => {
     if (!isAuthenticated) {
       setPrivateNotes([]);
-      setHasFetchedPrivate(false);
+      setFetchedPrivate(false);
     }
   }, [isAuthenticated]);
 
