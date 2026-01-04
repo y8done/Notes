@@ -4,6 +4,7 @@ import { KeyRound, Mail, LogIn, UserCircle } from "lucide-react";
 import { toast } from 'react-hot-toast'; // <-- FIX: Import toast
 import api from "../lib/axios";
 import { useAuth } from "../context/AuthContext";
+import Navbar from "../components/Navbar";
 
 
 const LoginPage = () => {
@@ -44,7 +45,7 @@ const LoginPage = () => {
 
   return (
     <div className="min-h-screen bg-base-200">
-      <header className="bg-base-100 border-b border-base-content/10 shadow-sm">
+      {/* <header className="bg-base-100 border-b border-base-content/10 shadow-sm">
         <div className="mx-auto max-w-6xl p-4">
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-bold text-primary font-mono tracking-tight">
@@ -57,7 +58,9 @@ const LoginPage = () => {
             </div>
           </div>
         </div>
-      </header>
+      </header> */}
+
+      <Navbar />
 
       <main className="flex items-center justify-center p-4">
         <div className="card w-full max-w-md shrink-0 bg-base-100 shadow-2xl">

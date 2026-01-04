@@ -9,7 +9,7 @@ const cors = require('cors');
 const path = require("path");
 dotenv.config();
 const app = express();
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 5001;
 
 // middleware
 if (process.env.NODE_ENV !== "production") {

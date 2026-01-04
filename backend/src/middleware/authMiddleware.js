@@ -1,29 +1,43 @@
-const jwt = require('jsonwebtoken');
+const jwt = require("jsonwebtoken");
 
 function authMiddleware(req, res, next) {
-    //1. Retrieve the token from the Authorization header
-    const authHeader = req.header('Authorization');
+  const authHeader = req.header("Authorization");
 
-    //2. Check if the token is present and properly formatted
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ message: 'No token, authorization denied' });
-    }
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ message: "No token, authorization denied" });
+  }
 
-    try{
-        const token = authHeader.split(' ')[1];
-        
-        //3. Verify the token
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-        //4. Attach the user information to the request object
-        req.user = decoded;
-        next();
-    }catch(error){
-        console.error("Error in loginUser:", error);
-        res.status(500).json({ message: "Internal server error" });
-   }
-
-
+  try {
+    const token = authHeader.split(" ")[1]; // 1. Remove "Bearer "
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (error) {
+    console.error("Error in authMiddleware:", error);
+    res.status(401).json({ message: "Token is not valid" }); // Changed to 401 for clarity
+  }
 }
 
-module.exports = authMiddleware;
+const verifyTokenOptional = (req, res, next) => {
+  const authHeader = req.header("Authorization");
+
+  // 1. If no header or doesn't start with Bearer, treat as guest
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    req.user = null;
+    return next();
+  }
+
+  try {
+    // 2. IMPORTANT: Split the token here too!
+    const token = authHeader.split(" ")[1]; 
+    
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (error) {
+    req.user = null; // Invalid/Expired token -> treat as guest
+    next();
+  }
+};
+
+module.exports = { authMiddleware, verifyTokenOptional };

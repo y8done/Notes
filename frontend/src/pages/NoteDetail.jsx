@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { useParams } from "react-router";
 import { ArrowLeftIcon, Trash2Icon, LoaderIcon } from "lucide-react";
 import { Link } from "react-router";
+import ReactMarkdown from "react-markdown";
 import { useAuth } from "../context/AuthContext"; // 1. Import Auth Context
 import { useNotes } from "../context/NoteContext";
 const NoteDetail = () => {
@@ -17,6 +18,9 @@ const NoteDetail = () => {
   const [summarizing, setSummarizing] = useState(false);
   const { user } = useAuth(); // 2. Get current user
   const { refreshNotes } = useNotes();
+  const [isPreview, setIsPreview] = useState(false);
+  // existing null check
+
   useEffect(() => {
     const fetchNote = async () => {
       try {
@@ -67,8 +71,8 @@ const NoteDetail = () => {
   };
 
   const handleSummarize = async () => {
-    if(!note || !note.content.trim()) {
-      toast.error("Note content is empty ! Cannot summarize")
+    if (!note || !note.content.trim()) {
+      toast.error("Note content is empty ! Cannot summarize");
       return;
     }
     setSummarizing(true);
@@ -79,8 +83,7 @@ const NoteDetail = () => {
     } catch (error) {
       console.log("Error in handleSummarize:", error);
       toast.error("Failed to generate summary! Please try again later");
-    }
-    finally {
+    } finally {
       setSummarizing(false);
     }
   };
@@ -96,7 +99,7 @@ const NoteDetail = () => {
   // 3. Helper to check if current user owns this note
   // A note is editable if: It is NOT global OR (It is global AND I am the admin/creator)
   // For your current logic: Global = Read Only. Private = Editable.
-  const isEditable = note && !note.isGlobal; 
+  const isEditable = note && !note.isGlobal;
 
   return (
     <div className="min-h-screen bg-base-200">
@@ -122,13 +125,24 @@ const NoteDetail = () => {
 
           <div className="card bg-base-100">
             <div className="card-body">
-              
               {/* GLOBAL NOTE WARNING BANNER */}
               {note.isGlobal && (
-                 <div role="alert" className="alert alert-info mb-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-current shrink-0 w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    <span>This is a Global Note. It is read-only.</span>
-                 </div>
+                <div role="alert" className="alert alert-info mb-4">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    className="stroke-current shrink-0 w-6 h-6"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    ></path>
+                  </svg>
+                  <span>This is a Global Note. It is read-only.</span>
+                </div>
               )}
 
               <div className="form-control mb-4">
@@ -146,18 +160,40 @@ const NoteDetail = () => {
               </div>
 
               <div className="form-control mb-4">
-                <label className="label">
-                  <span className="label-text">Content</span>
+                <label className="label cursor-pointer justify-between">
+                  <span className="label-text font-bold">Content</span>
+
+                  {/* --- NEW TOGGLE BUTTON --- */}
+                  {isEditable && (
+                    <button
+                      type="button" // Important so it doesn't submit the form
+                      className="btn btn-xs btn-outline btn-primary"
+                      onClick={() => setIsPreview(!isPreview)}
+                    >
+                      {isPreview ? "Edit Markdown" : "Preview Markdown"}
+                    </button>
+                  )}
                 </label>
-                <textarea
-                  placeholder="Write your note here..."
-                  className="textarea textarea-bordered h-32"
-                  value={note.content}
-                  readOnly={!isEditable} // 5. Disable input if Global
-                  onChange={(e) =>
-                    setNote({ ...note, content: e.target.value })
-                  }
-                />
+
+                {/* --- UPDATED LOGIC --- */}
+                {/* Show Editor IF: We are allowed to edit AND we are NOT in preview mode */}
+                {isEditable && !isPreview ? (
+                  <textarea
+                    className="textarea textarea-bordered h-64 font-mono text-base leading-relaxed"
+                    value={note.content}
+                    onChange={(e) =>
+                      setNote({ ...note, content: e.target.value })
+                    }
+                    placeholder="# Heading\n\n**Bold text**"
+                  />
+                ) : (
+                  // Otherwise (if previewing OR reading someone else's note), show Markdown
+                  <div className="min-h-[16rem] p-6 bg-base-200 rounded-lg border border-base-300">
+                    <article className="prose lg:prose-xl max-w-none">
+                      <ReactMarkdown>{note.content}</ReactMarkdown>
+                    </article>
+                  </div>
+                )}
                 {summary && (
                   <div className="mt-6 p-4 bg-base-200 rounded-lg border border-gray-300 shadow-sm">
                     <h3 className="font-semibold mb-2 text-lg text-primary">
