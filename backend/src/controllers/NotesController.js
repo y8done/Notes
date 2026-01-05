@@ -3,7 +3,17 @@ const mongoose = require('mongoose');
 
 async function getGlobalNotes(req, res){
     try{
-        const notes = await Note.find({isGlobal:true}).sort({createdAt:-1});
+        const { search } = req.query;
+        let query = {isGlobal:true};
+
+        if(search){
+            query.$or =[
+                {title : {$regex: search, $options:"i"}},
+                { content: { $regex: search, $options: "i" } }, // Match Content
+                { tags: { $in: [new RegExp(search, "i")] } }
+            ]
+        }
+        const notes = await Note.find(query).sort({createdAt:-1});
         res.status(200).json(notes);
     }catch(error){
         console.error("Error Fetching the notes !",error);
@@ -13,11 +23,12 @@ async function getGlobalNotes(req, res){
 
 async function addGlobalNote(req, res){
     try{
-        const { title, content} = req.body;
+        const { title, content, tags} = req.body;
 
         const newNote = new Note({
             title,
             content,
+            tags: tags || [],
             isGlobal:true,
             user:null
         });
@@ -31,7 +42,19 @@ async function addGlobalNote(req, res){
 }
 async function getUserNotes(req, res) {
     try {
-        const notes = await Note.find({user: new mongoose.Types.ObjectId(req.user.id || req.user._id),isGlobal:false}).sort({createdAt:-1});
+        const { search } = req.query;
+        let query = { 
+            user: new mongoose.Types.ObjectId(req.user.id || req.user._id),
+            isGlobal: false
+        };
+        if (search) {
+            query.$or = [
+                { title: { $regex: search, $options: "i" } },
+                { content: { $regex: search, $options: "i" } },
+                { tags: { $in: [new RegExp(search, "i")] } }
+            ];
+        }
+        const notes = await Note.find(query).sort({createdAt:-1});
         res.status(200).json(notes);
     } catch (error) {
         console.error("Error fetching notes:", error);
@@ -44,10 +67,11 @@ async function getUserNotes(req, res) {
 
 async function addUserNote(req, res) {
     try {
-        const { title, content } = req.body;
+        const { title, content,tags } = req.body;
         const newNote = new Note({ 
             title, 
             content,
+            tags:Array.isArray(tags) ? tags : [],
             user: req.user.id, // Comes from authMiddleware
             isGlobal: false
          });
@@ -62,7 +86,7 @@ async function addUserNote(req, res) {
 
 async function updateUserNote(req, res) {
     try {
-        const { title, content } = req.body;
+        const { title, content ,tags} = req.body;
         const note = await Note.findById(req.params.id);
         if (!note) return res.status(404).json({ message: "Note not found" });
 
@@ -73,6 +97,7 @@ async function updateUserNote(req, res) {
 
         note.title = title || note.title;
         note.content = content || note.content;
+        note.tags = tags || note.tags;
         await note.save();
         res.status(200).json(note);
     } catch (error) {

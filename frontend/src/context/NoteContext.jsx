@@ -1,6 +1,6 @@
 import api from "../lib/axios";
 import { useAuth } from "../context/AuthContext";
-import { createContext, useContext, useState, useEffect,useCallback } from "react";
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import toast from "react-hot-toast";
 
 const NoteContext = createContext();
@@ -9,12 +9,13 @@ export const NoteProvider = ({ children }) => {
   const [globalNotes, setGlobalNotes] = useState([]);
   const [privateNotes, setPrivateNotes] = useState([]);
   const { isAuthenticated } = useAuth();
-
   const [loading, setLoading] = useState(false);
 
-  const [fetchedglobal, setFetchedGlobal] = useState(false);
-  const [fetchedprivate, setFetchedPrivate] = useState(false);
+  // Track if we have loaded initial data
+  const [fetchedGlobal, setFetchedGlobal] = useState(false);
+  const [fetchedPrivate, setFetchedPrivate] = useState(false);
 
+  // Clear private notes on logout
   useEffect(() => {
     if (!isAuthenticated) {
       setPrivateNotes([]);
@@ -22,74 +23,80 @@ export const NoteProvider = ({ children }) => {
     }
   }, [isAuthenticated]);
 
-  const fetchGlobalNotes = useCallback(
-    async (forceRefresh = false) => {
-      if (fetchedglobal && !forceRefresh) return;
+  // --- 1. FETCH GLOBAL NOTES ---
+  const fetchGlobalNotes = useCallback(async (query = "") => {
+      // LOGIC FIX: If there is a query, we MUST fetch (ignore cache).
+      // Only skip if: No query AND we already fetched AND we aren't forcing.
+      // if (!query && fetchedGlobal) return;
+      
       setLoading(true);
       try {
-        const res = await api.get("/notes/global");
+        // ENDPOINT FIX: Added "/global"
+        const res = await api.get(`/notes/global?search=${query}`);
         setGlobalNotes(res.data);
-        setFetchedGlobal(true);
+        
+        // Only mark as "fetched" if it was a full load (no search)
+        if (!query) setFetchedGlobal(true);
         return null;
       } catch (error) {
         console.error("Error fetching global notes:", error);
-        if (error.response?.status === 429) {
-            return error; 
-        }
+        if (error.response?.status === 429) return error;
         toast.error("Failed to load global notes");
       } finally {
         setLoading(false);
       }
     },
-    [fetchedglobal]
+    [fetchedGlobal]
   );
 
-  const fetchPrivateNotes = useCallback(
-    async (forceRefresh = false) => {
+  // --- 2. FETCH PRIVATE NOTES ---
+  const fetchPrivateNotes = useCallback(async ( query = "") => {
       if (!isAuthenticated) return;
+      // LOGIC FIX: Always fetch if searching
+      // if (!query && fetchedPrivate) return;
 
-      if (fetchedprivate && !forceRefresh) return;
       setLoading(true);
       try {
-        const res = await api.get("/notes/");
+        // Endpoint is correct here (/notes)
+        const res = await api.get(`/notes?search=${query}`);
         setPrivateNotes(res.data);
-        setFetchedPrivate(true);
+        
+        if (!query) setFetchedPrivate(true);
         return null;
       } catch (error) {
         console.error("Error fetching private notes:", error);
-        if (error.response?.status === 429) {
-            return error;
-        }
+        if (error.response?.status === 429) return error;
         toast.error("Failed to load your notes");
       } finally {
         setLoading(false);
       }
     },
-    [fetchedprivate, isAuthenticated]
+    [fetchedPrivate, isAuthenticated]
   );
 
-  const refreshNotes = () =>{
-    setFetchedGlobal(false);
-    setFetchedPrivate(false);
-  }
+  const refreshNotes = () => {
+    
+    setFetchedGlobal("");
+    setFetchedPrivate("");
+    // Optionally trigger fetches immediately here if needed
+  };
 
   return (
     <NoteContext.Provider
-    value={{
+      value={{
         globalNotes,
         privateNotes,
         fetchGlobalNotes,
         fetchPrivateNotes,
         refreshNotes,
-        loading
-    }}>
-        {children}
+        loading,
+      }}
+    >
+      {children}
     </NoteContext.Provider>
   );
 };
 
 export const useNotes = () => {
   return useContext(NoteContext);
-}
-
-
+};

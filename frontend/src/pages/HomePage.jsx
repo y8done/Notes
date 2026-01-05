@@ -17,7 +17,7 @@ const HomePage = () => {
   const isAuthenticated = useAuth().isAuthenticated;
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
-
+  
   const {
     globalNotes,
     privateNotes,
@@ -26,6 +26,7 @@ const HomePage = () => {
     loading,
     refreshNotes,
   } = useNotes();
+  
   const handleTabChange = (tab) => {
     if (tab == "private" && !isAuthenticated) {
       toast.error("Please login/Register to view your notes !");
@@ -35,6 +36,8 @@ const HomePage = () => {
     setActiveTab(tab);
     setSearchQuery("");
   };
+
+  
   // useEffect(() => {
   //   // const fetchNotes = async () => {
   //   //   try {
@@ -80,9 +83,9 @@ const HomePage = () => {
 
       // 2. Call the context function and wait for the result
       if (activeTab === "global") {
-        error = await fetchGlobalNotes();
+        error = await fetchGlobalNotes(searchQuery);
       } else {
-        error = await fetchPrivateNotes();
+        error = await fetchPrivateNotes(searchQuery);
       }
 
       // 3. Check if the returned error is a 429
@@ -90,19 +93,24 @@ const HomePage = () => {
         setIsRateLimited(true);
       }
     };
+    const timerId = setTimeout(() => {
+        loadNotes();
+    }, 500);
 
-    loadNotes();
-  }, [activeTab, fetchGlobalNotes, fetchPrivateNotes]);
+    return () => clearTimeout(timerId);
+  }, [activeTab, searchQuery, fetchGlobalNotes, fetchPrivateNotes]);
 
   const notes = (activeTab === "global" ? globalNotes : privateNotes) || [];
 
-  const filteredNotes = notes.filter((note) => {
-    const query = searchQuery.toLowerCase();
-    return (
-      note.title.toLowerCase().includes(query) ||
-      note.content.toLowerCase().includes(query)
-    );
-  });
+  // const filteredNotes = notes.filter((note) => {
+  //   const query = searchQuery.toLowerCase();
+  //   const tags = note.tags || [];
+  //   return (
+  //     note.title.toLowerCase().includes(query) ||
+  //     note.content.toLowerCase().includes(query) ||
+  //     tags.some((t)=>t.toLowerCase().includes(query))
+  //   );
+  // });
   return (
     <div className="min-h-screen">
       <Navbar />
@@ -151,8 +159,8 @@ const HomePage = () => {
             <button
               onClick={() => {
                 if (activeTab === "global")
-                  fetchGlobalNotes(true); // Force Refresh
-                else fetchPrivateNotes(true);
+                  fetchGlobalNotes(""); // Force Refresh
+                else fetchPrivateNotes("");
               }}
               className="btn btn-circle btn-ghost btn-sm"
               title="Refresh Notes"
@@ -163,7 +171,7 @@ const HomePage = () => {
             </button>
           </div>
         </div>
-        {loading && (
+        {/* {loading && (
           <div className="text-center text-primary py-10">Loading notes...</div>
         )}
         {notes.length === 0 && !isRateLimited && <NotesNotFound />}
@@ -171,19 +179,56 @@ const HomePage = () => {
         
 
 
-        { notes.length > 0 && filteredNotes.length === 0 && !isRateLimited && (
+        { notes.length > 0 && notes.length === 0 && !isRateLimited && (
           <div className="text-center text-primary py-10">
             No notes found for "{searchQuery}"
           </div>
         )}
 
 
-        {filteredNotes.length > 0 && !isRateLimited && (
+        {notes.length > 0 && !isRateLimited && (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {filteredNotes.map((note) => (
+            {notes.map((note) => (
               <NoteCard key={note._id} note={note} />
             ))}
           </div>
+        )} */}
+        {loading && (
+          <div className="flex justify-center py-20">
+             <LoaderIcon className="animate-spin w-8 h-8 text-primary" />
+          </div>
+        )}
+        {!loading && !isRateLimited && (
+            <>
+                {/* CASE 1: Notes Found */}
+                {notes.length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                        {notes.map((note) => (
+                            <NoteCard key={note._id} note={note} />
+                        ))}
+                    </div>
+                )}
+
+                {/* CASE 2: No Notes (Empty Collection) - Only if NO search query */}
+                {notes.length === 0 && searchQuery === "" && (
+                    <NotesNotFound />
+                )}
+
+                {/* CASE 3: No Results (Search Failed) - Only if search query EXISTS */}
+                {notes.length === 0 && searchQuery !== "" && (
+                    <div className="flex flex-col items-center justify-center py-20 opacity-60">
+                        <Search className="w-16 h-16 mb-4" />
+                        <h3 className="text-xl font-bold">No results found</h3>
+                        <p>We couldn't find any notes matching "{searchQuery}"</p>
+                        <button 
+                            className="btn btn-link"
+                            onClick={() => setSearchQuery("")}
+                        >
+                            Clear Search
+                        </button>
+                    </div>
+                )}
+            </>
         )}
       </div>
     </div>

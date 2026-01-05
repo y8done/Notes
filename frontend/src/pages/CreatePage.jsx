@@ -1,24 +1,44 @@
-import React, { useState } from 'react'
-import { Link, useNavigate } from 'react-router'
-import api from '../lib/axios';
-import { ArrowLeftIcon } from 'lucide-react';
-import toast from 'react-hot-toast';
-import { useAuth } from '../context/AuthContext'; // Import Auth Context
-import { useNotes } from '../context/NoteContext';
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router";
+import api from "../lib/axios";
+import { ArrowLeftIcon,X } from "lucide-react";
+import toast from "react-hot-toast";
+import { useAuth } from "../context/AuthContext"; // Import Auth Context
+import { useNotes } from "../context/NoteContext";
 const CreatePage = () => {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [tags, setTags] = useState([]);
+  const [tagInput, setTagInput] = useState("");
   const [loading, setLoading] = useState(false);
-  
+
   // New State for the toggle (Default to Global if you want)
-  const [isGlobal, setIsGlobal] = useState(false); 
-  const {refreshNotes } = useNotes();
+  const [isGlobal, setIsGlobal] = useState(false);
+  const { refreshNotes } = useNotes();
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth(); // Get login status
 
+  const handleTagKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+
+      const newTag = tagInput.trim();
+
+      if (newTag && !tags.includes(newTag)) {
+        setTags([...tags, newTag]);
+        setTagInput("");
+      } else if (tags.includes(newTag)) {
+        toast.error("Tag already exists!");
+      }
+    }
+  };
+
+  const removeTag = (tagToRemove) => {
+    setTags(tags.filter((t) => t != tagToRemove));
+  };
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!title.trim() || !content.trim()) {
       toast.error("All fields are required");
       return;
@@ -34,20 +54,23 @@ const CreatePage = () => {
     try {
       // Dynamic Endpoint Selection
       const endpoint = isGlobal ? "/notes/global" : "/notes";
-      
+
       await api.post(endpoint, {
         title,
-        content
+        content,
+        tags,
       });
       refreshNotes();
-      toast.success(isGlobal ? "Posted to Global Feed! 🌍" : "Private Note Created! 🔒");
+      toast.success(
+        isGlobal ? "Posted to Global Feed! 🌍" : "Private Note Created! 🔒"
+      );
       navigate("/");
     } catch (error) {
       console.error("Error :", error);
       if (error.response?.status === 429) {
         toast.error("Slow down! You're creating notes too fast", {
           duration: 4000,
-          icon: "💀"
+          icon: "💀",
         });
       } else {
         toast.error("Failed to create note! Please try again later");
@@ -55,43 +78,81 @@ const CreatePage = () => {
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-base-200">
-      <div className='container mx-auto px-4 py-8'>
-        <div className='max-w-2xl mx-auto'>
-          <Link to={"/"} className='btn btn-ghost mb-6'>
-            <ArrowLeftIcon className='size-5' />
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-2xl mx-auto">
+          <Link to={"/"} className="btn btn-ghost mb-6">
+            <ArrowLeftIcon className="size-5" />
             Back to Notes
           </Link>
-          <div className='card bg-base-100 shadow-xl'>
-            <div className='card-body'>
-              <h2 className='card-title text-2xl mb-4'>Create New Note</h2>
+          <div className="card bg-base-100 shadow-xl">
+            <div className="card-body">
+              <h2 className="card-title text-2xl mb-4">Create New Note</h2>
               <form onSubmit={handleSubmit}>
-                
                 {/* --- TITLE INPUT --- */}
-                <div className='form-control mb-4'>
-                  <label className='label'>
-                    <span className='label-text'>Title</span>
+                <div className="form-control mb-4">
+                  <label className="label">
+                    <span className="label-text">Title</span>
                   </label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     placeholder="Note Title"
-                    className='input input-bordered'
+                    className="input input-bordered"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
+                    autoFocus
                   />
                 </div>
+                {/* ----Tags INPUT--- */}
 
-                {/* --- CONTENT INPUT --- */}
-                <div className='form-control mb-4'>
-                  <label className='label'>
-                    <span className='label-text'>Content</span>
+                <div className="form-control mb-4">
+                  <label className="label">
+                    <span className="label-text">Tags</span>
                   </label>
-                  <textarea 
+
+                  {tags.length > 0 && (
+                    <div className="flex flex-wrap gap-2  mb-3">
+                      {tags.map((tag, index) => (
+                        <span
+                          key={index}
+                          className="badge badge-primary badge-lg gap-2 pl-3"
+                        >
+                          #{tag}
+                          <button
+                            onClick={() => removeTag(tag)}
+                            className="hover:text-white/80 transition-colors"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <input
+                    type="text"
+                    className="input input-bordered input-sm"
+                    placeholder="Type tags and press Enter"
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={handleTagKeyDown}
+                  />
+                  <label className="label">
+                    <span className="label-text-alt opacity-60">
+                      Press Enter to add a tag
+                    </span>
+                  </label>
+                </div>
+                {/* --- CONTENT INPUT --- */}
+                <div className="form-control mb-4">
+                  <label className="label">
+                    <span className="label-text">Content</span>
+                  </label>
+                  <textarea
                     placeholder="Write your note here..."
-                    className='textarea textarea-bordered h-32'
+                    className="textarea textarea-bordered h-32"
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
                   />
@@ -100,35 +161,44 @@ const CreatePage = () => {
                 {/* --- TOGGLE SWITCH --- */}
                 <div className="form-control mb-6 bg-base-200 p-3 rounded-lg">
                   <label className="label cursor-pointer justify-start gap-4">
-                    <span className="label-text font-bold">Post to Global Feed?</span> 
-                    <input 
-                      type="checkbox" 
-                      className="toggle toggle-primary" 
-                      checked={isGlobal} 
-                      onChange={(e) => setIsGlobal(e.target.checked)} 
+                    <span className="label-text font-bold">
+                      Post to Global Feed?
+                    </span>
+                    <input
+                      type="checkbox"
+                      className="toggle toggle-primary"
+                      checked={isGlobal}
+                      onChange={(e) => setIsGlobal(e.target.checked)}
                     />
                   </label>
                   <div className="text-xs text-base-content/60 mt-1 pl-1">
-                    {isGlobal 
-                      ? "🌍 Public: Everyone can read this note." 
+                    {isGlobal
+                      ? "🌍 Public: Everyone can read this note."
                       : "🔒 Private: Only you can see this note (Login required)."}
                   </div>
                 </div>
 
                 {/* --- SUBMIT BUTTON --- */}
                 <div className="card-actions justify-end">
-                  <button type="submit" className="btn btn-primary" disabled={loading}>
-                    {loading ? "Creating..." : isGlobal ? "Publish Global Note" : "Save Private Note"}
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={loading}
+                  >
+                    {loading
+                      ? "Creating..."
+                      : isGlobal
+                      ? "Publish Global Note"
+                      : "Save Private Note"}
                   </button>
                 </div>
-
               </form>
             </div>
           </div>
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default CreatePage
+export default CreatePage;

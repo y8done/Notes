@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import api from "../lib/axios";
 import toast from "react-hot-toast";
 import { useParams } from "react-router";
-import { ArrowLeftIcon, Trash2Icon, LoaderIcon } from "lucide-react";
+import { ArrowLeftIcon, Trash2Icon, LoaderIcon, X } from "lucide-react";
 import { Link } from "react-router";
 import ReactMarkdown from "react-markdown";
 import { useAuth } from "../context/AuthContext"; // 1. Import Auth Context
@@ -19,6 +19,7 @@ const NoteDetail = () => {
   const { user } = useAuth(); // 2. Get current user
   const { refreshNotes } = useNotes();
   const [isPreview, setIsPreview] = useState(false);
+  const [tagInput, setTagInput] = useState("");
   // existing null check
 
   useEffect(() => {
@@ -95,7 +96,21 @@ const NoteDetail = () => {
       </div>
     );
   }
+  const handleTagKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
 
+      const newTag = tagInput.trim();
+      if (newTag && !note.tags.includes(newTag)) {
+        setNote({ ...note, tags: [...note.tags, newTag] });
+        setTagInput("");
+      }
+    }
+  };
+
+  const removeTag = (tagToRemove) => {
+    setNote({ ...note, tags: note.tags.filter((tag) => tag != tagToRemove) });
+  };
   // 3. Helper to check if current user owns this note
   // A note is editable if: It is NOT global OR (It is global AND I am the admin/creator)
   // For your current logic: Global = Read Only. Private = Editable.
@@ -158,6 +173,35 @@ const NoteDetail = () => {
                   onChange={(e) => setNote({ ...note, title: e.target.value })}
                 />
               </div>
+              <div className="form-control mb-4">
+                <label className="label">
+                  <span className="label-text">Tags</span>
+                </label>
+
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {note.tags?.map((tag,index)=>(
+                    <span className="badge badge-primary gap-2 p-3">
+                      #{tag}
+                      {isEditable && (
+                        <X className="w-3 h-3 cursor-pointer" onClick={()=> removeTag(tag)}/>
+                      )}
+                    </span>
+                  ))}
+
+                </div>
+
+                {isEditable && (
+                  <input
+                    type="text"
+                    className="input input-bordered input-sm"
+                    placeholder="Type tag and press Enter"
+                    value={tagInput}
+                    onChange={(e)=> setTagInput(e.target.value)}
+                    onKeyDown={handleTagKeyDown}
+                  />
+                )}
+              </div>
+
 
               <div className="form-control mb-4">
                 <label className="label cursor-pointer justify-between">
